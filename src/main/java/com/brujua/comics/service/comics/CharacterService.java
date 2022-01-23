@@ -1,9 +1,14 @@
 package com.brujua.comics.service.comics;
 
 import com.brujua.comics.domain.Character;
+import com.brujua.comics.domain.Comic;
 import com.brujua.comics.persistence.CharacterRepository;
 import com.brujua.comics.service.marvel.Gateway;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class CharacterService {
@@ -34,5 +39,16 @@ public class CharacterService {
         Character character = marvelGateway.getCharacter(charId);
         repository.save(character);
         return character;
+    }
+
+    public List<Character> getCharactersWithSharedComic(Character character) {
+        Set<String> ids = character.getComics().stream()
+                .flatMap(Comic::characterIds)
+                .collect(Collectors.toSet());
+
+        return ids.stream()
+                .parallel()
+                .map(this::findById)
+                .toList();
     }
 }

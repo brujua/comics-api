@@ -1,6 +1,7 @@
 package com.brujua.comics.service.marvel;
 
 import com.brujua.comics.domain.Collaborator;
+import com.brujua.comics.domain.Comic;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
@@ -29,6 +30,19 @@ public class MarvelComic {
 
     private List<Collaborator> collaborators;
     private List<LightWeightCharacter> characters;
+
+    public Comic toDomain() {
+        List<String> characterIds = characters.stream()
+                .map(LightWeightCharacter::id)
+                .toList();
+
+        return Comic.builder()
+                .id(id)
+                .title(title)
+                .collaborators(collaborators)
+                .characterIds(characterIds)
+                .build();
+    }
 
     @SuppressWarnings("unchecked")
     @JsonProperty("creators")

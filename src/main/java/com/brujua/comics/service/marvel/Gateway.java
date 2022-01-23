@@ -12,9 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import javax.annotation.Nonnull;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
+
+import static java.util.Objects.requireNonNull;
 
 public class Gateway {
 
@@ -35,11 +37,7 @@ public class Gateway {
     public Character getCharacter(String charId) {
         MarvelCharacter marvelCharacter = retrieveCharacter(charId);
 
-        /*marvelCharacter.comics.stream()
-                .map(LightWeightComic::id)
-                .map()*/
-
-        List<Comic> comics = Collections.emptyList(); //TODO
+        List<Comic> comics = getComicsByCharacter(charId);
         
         return Character.builder()
                 .id(marvelCharacter.getId())
@@ -49,13 +47,24 @@ public class Gateway {
                 .build();
     }
 
+    private List<Comic> getComicsByCharacter(String characterId) {
+        if (!StringUtils.isAlphanumeric(characterId)) {
+            throw new InvalidCharacterException();
+        }
+
+        return callMarvelApi("/characters/" + characterId + "/comics")
+                .getResults(MarvelComic.class).stream()
+                .map(MarvelComic::toDomain)
+                .toList();
+    }
+
     private MarvelCharacter retrieveCharacter(String charId) {
         if (!StringUtils.isAlphanumeric(charId)) {
             throw new InvalidCharacterException();
         }
 
-        ResponseWrapper response = callMarvelApi("/characters/" + charId);
-        return response.getSingleResult(MarvelCharacter.class);
+        return callMarvelApi("/characters/" + charId)
+                .getSingleResult(MarvelCharacter.class);
     }
 
     private MarvelComic retrieveComic(String comicId) {
@@ -67,6 +76,7 @@ public class Gateway {
                 .getSingleResult(MarvelComic.class);
     }
 
+    @Nonnull
     private ResponseWrapper callMarvelApi(String path) {
         long ts = System.currentTimeMillis();
         String hash = DigestUtils.md5Hex(ts + privateKey + publicKey);
@@ -85,7 +95,7 @@ public class Gateway {
                 ResponseWrapper.class
         );
 
-        return response.getBody();
+        return requireNonNull(response.getBody());
     }
 
     public static void main(String[] args) {
