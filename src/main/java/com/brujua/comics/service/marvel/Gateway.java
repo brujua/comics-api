@@ -21,12 +21,14 @@ import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * <p>Gateway that represents the Marvel API and allows querying its resources</p>
+ */
 @Service
 public class Gateway {
 
     private final RestTemplate restTemplate;
 
-    //TODO externalize configuration env variables
     @Value("${marvel.publicKey}")
     private String publicKey;
     @Value("${marvel.privateKey}")
@@ -43,16 +45,24 @@ public class Gateway {
      * @throws com.brujua.comics.error.InvalidCharacterException if the charId is invalid
      */
     public Character getCharacter(String charId) {
-        MarvelCharacter marvelCharacter = retrieveCharacter(charId);
+        try {
+            MarvelCharacter marvelCharacter = retrieveCharacter(charId);
 
-        List<Comic> comics = getComicsByCharacter(charId);
-        
-        return Character.builder()
-                .id(marvelCharacter.getId())
-                .name(marvelCharacter.getName())
-                .lastSync(Instant.now())
-                .comics(comics)
-                .build();
+            List<Comic> comics = getComicsByCharacter(charId);
+
+            return Character.builder()
+                    .id(marvelCharacter.getId())
+                    .name(marvelCharacter.getName())
+                    .lastSync(Instant.now())
+                    .comics(comics)
+                    .build();
+
+        } catch(HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new InvalidCharacterException(charId);
+            }
+            throw e;
+        }
     }
 
     private List<Comic> getComicsByCharacter(String characterId) {
@@ -87,20 +97,13 @@ public class Gateway {
                 .encode()
                 .toUriString();
 
-        try {
-            ResponseEntity<ResponseWrapper> response = restTemplate.exchange(
-                    uriString,
-                    HttpMethod.GET,
-                    null,
-                    ResponseWrapper.class
-            );
-            return requireNonNull(response.getBody());
 
-        } catch(HttpClientErrorException e) {
-            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
-                throw new IllegalArgumentException();
-            }
-            throw e;
-        }
+        ResponseEntity<ResponseWrapper> response = restTemplate.exchange(
+                uriString,
+                HttpMethod.GET,
+                null,
+                ResponseWrapper.class
+        );
+        return requireNonNull(response.getBody());
     }
 }
