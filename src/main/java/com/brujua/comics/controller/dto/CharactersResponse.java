@@ -18,12 +18,13 @@ public class CharactersResponse {
         this.characters = characters.stream().map(CharacterDTO::new).toList();
     }
 
+    @Getter
     private static class CharacterDTO {
-        String name;
+        String character;
         List<String> comics;
 
         public CharacterDTO(Character character) {
-            name = character.getName();
+            this.character = character.getName();
             comics = character.getComics().stream().map(Comic::getTitle).toList();
         }
     }

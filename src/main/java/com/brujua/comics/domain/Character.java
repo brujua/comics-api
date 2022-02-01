@@ -1,40 +1,49 @@
 package com.brujua.comics.domain;
 
-import lombok.Builder;
-import lombok.Getter;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
+import lombok.*;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.time.Instant;
 import java.util.*;
 
-import static java.time.temporal.ChronoUnit.DAYS;
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toMap;
 
 @Builder
 @Getter
+@Entity
+@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
+@NoArgsConstructor(access = AccessLevel.PACKAGE)
+@AllArgsConstructor
 public class Character {
 
-    private static final int MAX_SYNC_INTERVAL_DAYS = 3;
+    @Id
+    private String id;
 
-    private final String name;
-    private final String id;
-    private final Instant lastSync;
-    private final List<Comic> comics;
+    private String name;
+    private Instant lastSync;
 
-    public boolean exceededMaxSyncTime() {
-        return DAYS.between(lastSync, Instant.now()) > MAX_SYNC_INTERVAL_DAYS;
-    }
+    @Type(type = "jsonb")
+    @Column(columnDefinition = "jsonb")
+    private List<Comic> comics;
 
-    public Map<String, List<String>> getCollaboratorsByRole() {
+    public Map<String, Set<String>> getCollaboratorsByRole() {
         return comics.stream()
                 .map(Comic::getCollaborators)
                 .flatMap(Collection::stream)
                 .collect(toMap(
                             Collaborator::role,
-                            c -> new ArrayList<>(Collections.singletonList(c.name())),
-                            (list1, list2) -> {
-                                list1.addAll(list2);
-                                return list1;
-                            } //method called to combine values when repeated key (same role)
+                            c -> new HashSet<>(singleton(c.name())),
+                            (set1, set2) -> {
+                                //method called to combine values when repeated key (same role)
+                                set1.addAll(set2);
+                                return set1;
+                            }
                 ));
     }
 

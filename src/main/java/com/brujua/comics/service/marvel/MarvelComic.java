@@ -22,7 +22,7 @@ import static java.util.Collections.emptyList;
 @ToString
 public class MarvelComic {
 
-    public record LightWeightCharacter(String id, String name){}
+    private record LightWeightCharacter(String id, String name){}
 
     String id;
     String title;

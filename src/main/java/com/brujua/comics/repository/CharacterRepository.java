@@ -1,4 +1,4 @@
-package com.brujua.comics.persistence;
+package com.brujua.comics.repository;
 
 import com.brujua.comics.domain.Character;
 import org.springframework.data.repository.CrudRepository;

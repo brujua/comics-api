@@ -2,33 +2,44 @@ package com.brujua.comics.service.comics;
 
 import com.brujua.comics.domain.Character;
 import com.brujua.comics.domain.Comic;
-import com.brujua.comics.persistence.CharacterRepository;
+import com.brujua.comics.repository.CharacterRepository;
 import com.brujua.comics.service.marvel.Gateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static java.time.temporal.ChronoUnit.DAYS;
+
 @Service
 public class CharacterService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CharacterService.class);
+
+    final int maxSyncIntervalDays;
 
     private final  CharacterRepository repository;
     private final Gateway marvelGateway;
 
-    public CharacterService(CharacterRepository repository, Gateway marvelGateway) {
+    @Autowired
+    public CharacterService(CharacterRepository repository, Gateway marvelGateway, @Value("${comics.max_sync_interval_days}") int maxSync) {
         this.repository = repository;
         this.marvelGateway = marvelGateway;
+        this.maxSyncIntervalDays = maxSync;
     }
 
-    /**
-     * @throws com.brujua.comics.error.InvalidCharacterException if the charId is invalid
-     */
     public Character findById(String charId) {
         Character character = repository.findById(charId)
                 .orElseGet(() -> getCharacterFromMarvel(charId));
 
-        if (character.exceededMaxSyncTime()) {
+        if (exceededMaxSyncTime(character.getLastSync())) {
+            logger.info("Exceeded max sync time of {}", maxSyncIntervalDays);
             character = getCharacterFromMarvel(charId);
         }
 
@@ -36,6 +47,7 @@ public class CharacterService {
     }
 
     private Character getCharacterFromMarvel(String charId) {
+        logger.info("Syncing character {} with marvel", charId);
         Character character = marvelGateway.getCharacter(charId);
         repository.save(character);
         return character;
@@ -48,7 +60,11 @@ public class CharacterService {
 
         return ids.stream()
                 .parallel()
-                .map(this::findById)
+                .map(this::findById) //TODO could be done in a single query
                 .toList();
+    }
+
+    private boolean exceededMaxSyncTime(Instant lastSync) {
+        return DAYS.between(lastSync, Instant.now()) > maxSyncIntervalDays;
     }
 }
