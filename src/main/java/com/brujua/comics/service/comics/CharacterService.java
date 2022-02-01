@@ -60,6 +60,7 @@ public class CharacterService {
 
         return ids.stream()
                 .parallel()
+                .filter(id -> !character.getId().equals(id))
                 .map(this::findById) //TODO could be done in a single query
                 .toList();
     }
